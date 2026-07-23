@@ -38,11 +38,10 @@ pub fn build_openai_responses_payload(
         "store": false,
     });
 
-    if cache_retention != CacheRetention::None {
-        if let Some(session_id) = options.session_id {
+    if cache_retention != CacheRetention::None
+        && let Some(session_id) = options.session_id {
             payload["prompt_cache_key"] = Value::String(session_id);
         }
-    }
     if cache_retention == CacheRetention::Long
         && supports_openai_responses_long_cache_retention(model)
     {
@@ -216,14 +215,13 @@ pub fn convert_openai_responses_messages(
     );
     let mut messages = Vec::new();
 
-    if include_system_prompt {
-        if let Some(system_prompt) = &context.system_prompt {
+    if include_system_prompt
+        && let Some(system_prompt) = &context.system_prompt {
             messages.push(json!({
                 "role": if model.reasoning { "developer" } else { "system" },
                 "content": system_prompt,
             }));
         }
-    }
 
     let mut message_index = 0usize;
     for message in transformed_messages {
@@ -260,11 +258,10 @@ pub fn convert_openai_responses_messages(
                 for block in assistant.content {
                     match block {
                         AssistantContent::Thinking(thinking) => {
-                            if let Some(signature) = thinking.thinking_signature {
-                                if let Ok(value) = serde_json::from_str::<Value>(&signature) {
+                            if let Some(signature) = thinking.thinking_signature
+                                && let Ok(value) = serde_json::from_str::<Value>(&signature) {
                                     output.push(value);
                                 }
-                            }
                         }
                         AssistantContent::Text(text) => {
                             if text.text.trim().is_empty() {
@@ -630,8 +627,8 @@ impl OpenAIResponsesStreamProcessor {
                 }
             }
             "response.reasoning_summary_part.done" => {
-                if self.current_item_type.as_deref() == Some("reasoning") {
-                    if let Some(current_item) = self.current_item.as_mut()
+                if self.current_item_type.as_deref() == Some("reasoning")
+                    && let Some(current_item) = self.current_item.as_mut()
                         && let Some(last_part) = current_item
                             .get_mut("summary")
                             .and_then(Value::as_array_mut)
@@ -643,7 +640,6 @@ impl OpenAIResponsesStreamProcessor {
                         }
                         self.append_openai_responses_thinking_delta(output, sender, "\n\n");
                     }
-                }
             }
             "response.reasoning_text.delta" => {
                 if self.current_item_type.as_deref() == Some("reasoning") {
@@ -746,15 +742,14 @@ impl OpenAIResponsesStreamProcessor {
                         {
                             tool_call.arguments = parse_arguments(&self.current_partial_json);
                         }
-                        if let Some(delta) = arguments.strip_prefix(&previous_partial) {
-                            if !delta.is_empty() {
+                        if let Some(delta) = arguments.strip_prefix(&previous_partial)
+                            && !delta.is_empty() {
                                 sender.push(AssistantMessageEvent::ToolcallDelta {
                                     content_index: index,
                                     delta: delta.to_owned(),
                                     partial: output.clone(),
                                 });
                             }
-                        }
                     }
                 }
             }

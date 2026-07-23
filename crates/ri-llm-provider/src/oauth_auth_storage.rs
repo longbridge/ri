@@ -214,7 +214,7 @@ pub async fn refresh_oauth_token(
     refresh_oauth_token_with_refresher_at(
         provider_id,
         credentials,
-        now_millis() as i64,
+        now_millis(),
         &BuiltInOAuthTokenRefresher,
     )
     .await
@@ -244,7 +244,7 @@ pub async fn get_oauth_api_key_from_credentials(
     get_oauth_api_key_from_credentials_with_refresher_at(
         provider_id,
         credentials_by_provider,
-        now_millis() as i64,
+        now_millis(),
         &BuiltInOAuthTokenRefresher,
     )
     .await
@@ -338,7 +338,7 @@ pub async fn resolve_auth_storage_api_key_from_path(
     resolve_auth_storage_api_key_from_path_with_refresher_at(
         provider_id,
         path,
-        now_millis() as i64,
+        now_millis(),
         &BuiltInOAuthTokenRefresher,
     )
     .await

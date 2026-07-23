@@ -395,6 +395,7 @@ pub fn resolve_aws_profile_region(profile: Option<&str>) -> Option<String> {
         .cloned()
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn sign_aws_sigv4_headers(
     method: &str,
     url: &str,

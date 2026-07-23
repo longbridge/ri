@@ -558,11 +558,10 @@ fn apply_known_model_overrides(model: &mut Model) {
         model.cost = ModelCost::default();
     }
 
-    if model.provider == "cloudflare-workers-ai" {
-        if apply_cloudflare_workers_ai_generated_metadata(model) {
+    if model.provider == "cloudflare-workers-ai"
+        && apply_cloudflare_workers_ai_generated_metadata(model) {
             return;
         }
-    }
 
     if model.provider == "amazon-bedrock" && model.id.contains("opus-4-6") {
         model.reasoning = true;

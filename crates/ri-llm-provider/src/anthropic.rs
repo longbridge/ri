@@ -613,6 +613,7 @@ pub fn build_anthropic_simple_payload(
     build_anthropic_simple_payload_for_client(model, context, options, false)
 }
 
+#[allow(clippy::field_reassign_with_default)]
 pub fn build_anthropic_simple_payload_for_client(
     model: &Model,
     context: &Context,

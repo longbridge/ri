@@ -43,8 +43,8 @@ static NON_OVERFLOW_PATTERNS: std::sync::LazyLock<Vec<Regex>> = std::sync::LazyL
 });
 
 pub fn is_context_overflow(message: &AssistantMessage, context_window: Option<u64>) -> bool {
-    if message.stop_reason == StopReason::Error {
-        if let Some(error) = &message.error_message {
+    if message.stop_reason == StopReason::Error
+        && let Some(error) = &message.error_message {
             let non_overflow = NON_OVERFLOW_PATTERNS
                 .iter()
                 .any(|pattern| pattern.is_match(error));
@@ -56,7 +56,6 @@ pub fn is_context_overflow(message: &AssistantMessage, context_window: Option<u6
                 return true;
             }
         }
-    }
 
     if let Some(context_window) = context_window {
         let input_tokens = message.usage.input + message.usage.cache_read;

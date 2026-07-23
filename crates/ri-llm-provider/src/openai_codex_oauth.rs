@@ -280,7 +280,7 @@ pub async fn exchange_openai_codex_authorization_code(
     verifier: &str,
     redirect_uri: Option<&str>,
 ) -> Result<OAuthCredentials, String> {
-    exchange_openai_codex_authorization_code_at(code, verifier, redirect_uri, now_millis() as i64)
+    exchange_openai_codex_authorization_code_at(code, verifier, redirect_uri, now_millis())
         .await
 }
 
@@ -329,7 +329,7 @@ pub async fn refresh_openai_codex_token_with_url_at(
 }
 
 pub async fn refresh_openai_codex_token(refresh_token: &str) -> Result<OAuthCredentials, String> {
-    refresh_openai_codex_token_at(refresh_token, now_millis() as i64).await
+    refresh_openai_codex_token_at(refresh_token, now_millis()).await
 }
 
 pub fn parse_openai_codex_oauth_token_response(

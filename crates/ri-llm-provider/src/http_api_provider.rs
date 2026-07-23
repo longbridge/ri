@@ -1122,11 +1122,9 @@ fn spawn_mistral_sse_request(
             &mut output,
         )
         .await
-        {
-            if !processor_already_pushed_error(&output, &error) {
+            && !processor_already_pushed_error(&output, &error) {
                 push_provider_error(&sender, &mut output, StopReason::Error, error);
             }
-        }
     });
     Ok(stream)
 }
@@ -1162,6 +1160,7 @@ fn spawn_openai_completions_sse_request(
     Ok(stream)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn stream_openai_codex_websocket_json(
     model: &Model,
     options: &SimpleStreamOptions,
@@ -1620,6 +1619,7 @@ async fn stream_google_sse_json(
     processor.finish(output, sender)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn stream_bedrock_eventstream_json(
     model: &Model,
     options: &SimpleStreamOptions,
@@ -1705,6 +1705,7 @@ async fn stream_bedrock_eventstream_json(
     processor.finish(output, sender)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn stream_anthropic_sse_json(
     model: &Model,
     options: &SimpleStreamOptions,

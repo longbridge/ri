@@ -172,7 +172,7 @@ async fn login_anthropic_cli() -> Result<OAuthCredentials, String> {
         "OAuth state mismatch",
     )
     .await?;
-    let now = now_millis() as i64;
+    let now = now_millis();
     exchange_anthropic_authorization_code_with_url_at(
         &callback_or_manual.code,
         &callback_or_manual.state,
@@ -194,7 +194,7 @@ async fn login_openai_codex_cli() -> Result<OAuthCredentials, String> {
         "State mismatch",
     )
     .await?;
-    let now = now_millis() as i64;
+    let now = now_millis();
     exchange_openai_codex_authorization_code_with_url_at(
         &callback_or_manual.code,
         &callback_or_manual.verifier,
