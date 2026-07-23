@@ -62,6 +62,7 @@ struct TurnOutcome {
     tool_results: Vec<ToolResultMessage>,
     terminate: bool,
     terminal_assistant: bool,
+    stop_reason: StopReason,
 }
 
 struct PreparedToolCall {
@@ -365,6 +366,14 @@ async fn run_until_done(
         if should_continue || has_queued_messages {
             continue;
         }
+        // Bug A fix: inject continue message on truncation
+        if outcome.stop_reason == StopReason::Length {
+            tracing::debug!("stop_reason=Length, injecting continue");
+            pending_messages = vec![AgentMessage::User(
+                ri_llm_provider::UserMessage::text("Continue."),
+            )];
+            continue;
+        }
         pending_messages = get_follow_up_messages(&active_config).await?;
         if pending_messages.is_empty() {
             return Ok(all_messages);
@@ -660,6 +669,7 @@ async fn run_one_turn(
             assistant.stop_reason,
             StopReason::Error | StopReason::Aborted
         ),
+        stop_reason: assistant.stop_reason,
     })
 }
 
