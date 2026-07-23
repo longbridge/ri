@@ -1,0 +1,6 @@
+# linux x86_64: /usr/bin/cc is a broken symlink in this sandbox; point directly to gcc-12.
+[target.x86_64-unknown-linux-gnu]
+linker = "/usr/bin/gcc-12"
+
+[env]
+CC = "/usr/bin/gcc-12"

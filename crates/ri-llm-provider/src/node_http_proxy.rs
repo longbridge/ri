@@ -93,7 +93,14 @@ fn cached_or_build_client(proxy_url: Option<ProxyUrl>) -> Result<(reqwest::Clien
     }
     let mut builder = reqwest::Client::builder()
         .no_proxy()
-        .pool_idle_timeout(POOL_IDLE_TIMEOUT);
+        .pool_idle_timeout(POOL_IDLE_TIMEOUT)
+        // MEMORY: limit idle connections to 1 per host. endless-ri-runner is
+        // single-task (Sequential tool execution mode), so >1 idle connections
+        // provide no throughput benefit and waste socket buffer memory
+        // (~32-64 KB/conn). Active (in-flight) connections are not affected.
+        // pool_idle_timeout(50s) already cleans up stragglers; this caps the
+        // maximum idle footprint at any single moment.
+        .pool_max_idle_per_host(1);
     if let Some(proxy_url) = &proxy_url {
         let proxy = reqwest::Proxy::all(proxy_url.as_str())
             .map_err(|error| format!("Invalid proxy URL {:?}: {error}", proxy_url.as_str()))?;
