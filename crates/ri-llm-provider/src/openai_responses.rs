@@ -60,13 +60,12 @@ pub fn build_openai_responses_payload(
         "store": false,
     });
 
-    if cache_retention != CacheRetention::None {
-        if let Some(session_id) = options.session_id {
+    if cache_retention != CacheRetention::None
+        && let Some(session_id) = options.session_id {
             payload["prompt_cache_key"] = Value::String(
                 crate::openai_codex_responses::clamp_openai_prompt_cache_key(&session_id),
             );
         }
-    }
     if cache_retention == CacheRetention::Long
         && supports_openai_responses_long_cache_retention(model)
     {
@@ -297,8 +296,8 @@ pub fn convert_openai_responses_messages_with_deferred(
     );
     let mut messages = Vec::new();
 
-    if include_system_prompt {
-        if let Some(system_prompt) = &context.system_prompt {
+    if include_system_prompt
+        && let Some(system_prompt) = &context.system_prompt {
             messages.push(json!({
                 "role": if model.reasoning
                     && model
@@ -315,7 +314,6 @@ pub fn convert_openai_responses_messages_with_deferred(
                 "content": system_prompt,
             }));
         }
-    }
 
     let mut message_index = 0usize;
     for message in transformed_messages {
@@ -353,11 +351,10 @@ pub fn convert_openai_responses_messages_with_deferred(
                 for block in assistant.content {
                     match block {
                         AssistantContent::Thinking(thinking) => {
-                            if let Some(signature) = thinking.thinking_signature {
-                                if let Ok(value) = serde_json::from_str::<Value>(&signature) {
+                            if let Some(signature) = thinking.thinking_signature
+                                && let Ok(value) = serde_json::from_str::<Value>(&signature) {
                                     output.push(value);
                                 }
-                            }
                         }
                         AssistantContent::Text(text) => {
                             // Fallback ids must be valid Responses message ids
@@ -775,15 +772,14 @@ impl OpenAIResponsesStreamProcessor {
                     {
                         tool_call.arguments = parsed;
                     }
-                    if let Some(delta) = arguments.strip_prefix(previous_partial.as_str()) {
-                        if !delta.is_empty() {
+                    if let Some(delta) = arguments.strip_prefix(previous_partial.as_str())
+                        && !delta.is_empty() {
                             sender.push(AssistantMessageEvent::ToolcallDelta {
                                 content_index,
                                 delta: delta.to_owned(),
                                 partial: output.clone(),
                             });
                         }
-                    }
                 }
             }
             "response.output_item.done" => {

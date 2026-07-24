@@ -86,6 +86,7 @@ struct ToolExecutionOutcome {
     update_events: Vec<AgentEvent>,
 }
 
+#[allow(clippy::large_enum_variant)]
 enum ToolCallPreparation {
     Prepared(PreparedToolCall),
     Immediate(ToolExecutionOutcome),
@@ -317,8 +318,8 @@ async fn finish_agent_loop_with_error(
         },
     )
     .await;
-    let new_messages = context.messages[original_len..].to_vec();
-    new_messages
+    
+    context.messages[original_len..].to_vec()
 }
 
 async fn run_until_done(
@@ -534,7 +535,7 @@ async fn run_one_turn(
                         config,
                         AgentEvent::MessageUpdate {
                             message: AgentMessage::Assistant(message.clone()),
-                            assistant_message_event: event,
+                            assistant_message_event: Box::new(event),
                         },
                     )
                     .await;

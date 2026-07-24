@@ -75,19 +75,12 @@ impl Default for CreateDirOptions {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub struct RemoveOptions {
     pub recursive: bool,
     pub force: bool,
 }
 
-impl Default for RemoveOptions {
-    fn default() -> Self {
-        Self {
-            recursive: false,
-            force: false,
-        }
-    }
-}
 
 pub type ExecCallback = Arc<dyn Fn(&str) -> Result<(), String> + Send + Sync + 'static>;
 
@@ -324,15 +317,15 @@ impl LocalExecutionEnv {
                 } else {
                     FileErrorCode::NotFound
                 },
-                message: format!("Not a directory: {}", display_path(&path)),
-                path: display_path(&path),
+                message: format!("Not a directory: {}", display_path(path)),
+                path: display_path(path),
             });
         }
-        let mut entries = fs::read_dir(&path)
-            .map_err(|error| file_error_from_io(error, &path))?
+        let mut entries = fs::read_dir(path)
+            .map_err(|error| file_error_from_io(error, path))?
             .map(|entry| {
-                check_file_abort(abort_flag, &path)?;
-                let entry = entry.map_err(|error| file_error_from_io(error, &path))?;
+                check_file_abort(abort_flag, path)?;
+                let entry = entry.map_err(|error| file_error_from_io(error, path))?;
                 self.file_info(entry.path())
             })
             .collect::<Result<Vec<_>, _>>()?;

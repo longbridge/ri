@@ -162,14 +162,14 @@ type FauxAsyncResponseFactory =
 
 #[derive(Clone)]
 pub enum FauxResponseStep {
-    Message(AssistantMessage),
+    Message(Box<AssistantMessage>),
     Factory(FauxResponseFactory),
     AsyncFactory(FauxAsyncResponseFactory),
 }
 
 impl From<AssistantMessage> for FauxResponseStep {
     fn from(value: AssistantMessage) -> Self {
-        Self::Message(value)
+        Self::Message(Box::new(value))
     }
 }
 
@@ -193,6 +193,7 @@ where
 }
 
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct RegisterFauxProviderOptions {
     pub api: Option<String>,
     pub provider: Option<String>,
@@ -201,17 +202,6 @@ pub struct RegisterFauxProviderOptions {
     pub token_size: Option<TokenSize>,
 }
 
-impl Default for RegisterFauxProviderOptions {
-    fn default() -> Self {
-        Self {
-            api: None,
-            provider: None,
-            models: Vec::new(),
-            tokens_per_second: None,
-            token_size: None,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy)]
 pub struct TokenSize {
@@ -359,7 +349,7 @@ impl FauxProvider {
             }
 
             let message = match step {
-                Some(FauxResponseStep::Message(message)) => Ok(message),
+                Some(FauxResponseStep::Message(message)) => Ok(*message),
                 Some(FauxResponseStep::Factory(factory)) => {
                     let state = FauxState { call_count };
                     std::panic::catch_unwind(AssertUnwindSafe(|| {
@@ -710,8 +700,8 @@ fn with_usage_estimate(
     let mut cache_read = 0;
     let mut cache_write = 0;
 
-    if let Some(session_id) = &options.session_id {
-        if options.cache_retention != Some(CacheRetention::None) {
+    if let Some(session_id) = &options.session_id
+        && options.cache_retention != Some(CacheRetention::None) {
             let mut prompt_cache = prompt_cache.lock();
             if let Some(previous_prompt) = prompt_cache.get(session_id) {
                 let cached_chars = common_prefix_length(previous_prompt, &prompt_text);
@@ -723,7 +713,6 @@ fn with_usage_estimate(
             }
             prompt_cache.insert(session_id.clone(), prompt_text);
         }
-    }
 
     message.usage = Usage {
         input,

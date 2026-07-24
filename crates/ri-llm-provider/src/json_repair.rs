@@ -66,8 +66,8 @@ pub fn repair_json(json: &str) -> String {
                 continue;
             };
 
-            if next == 'u' {
-                if let Some((digits, value)) = parse_hex_quad(&chars, index + 2) {
+            if next == 'u'
+                && let Some((digits, value)) = parse_hex_quad(&chars, index + 2) {
                     if is_high_surrogate(value) {
                         if chars.get(index + 6) == Some(&'\\')
                             && chars.get(index + 7) == Some(&'u')
@@ -97,7 +97,6 @@ pub fn repair_json(json: &str) -> String {
                     index += 6;
                     continue;
                 }
-            }
 
             if matches!(next, '"' | '\\' | '/' | 'b' | 'f' | 'n' | 'r' | 't' | 'u') {
                 repaired.push('\\');

@@ -70,7 +70,6 @@ pub fn build_mistral_simple_payload(
             .filter(|value| !value.is_empty())
             .map(str::to_owned),
         prompt_cache_key: mistral_prompt_cache_key(&options),
-        ..Default::default()
     };
 
     let has_explicit_reasoning_control =
@@ -80,11 +79,9 @@ pub fn build_mistral_simple_payload(
         payload_options.prompt_mode = Some("reasoning".to_owned());
     } else if !has_explicit_reasoning_control
         && let Some(reasoning) = reasoning.filter(|_| should_use_reasoning)
-    {
-        if uses_reasoning_effort(model) {
+        && uses_reasoning_effort(model) {
             payload_options.reasoning_effort = Some(map_reasoning_effort(model, reasoning));
         }
-    }
 
     build_mistral_chat_payload(model, context, payload_options)
 }
@@ -325,15 +322,14 @@ impl MistralChatStreamProcessor {
 }
 
 fn apply_mistral_chunk_metadata(output: &mut AssistantMessage, model: &Model, chunk: &Value) {
-    if output.response_id.is_none() {
-        if let Some(id) = chunk
+    if output.response_id.is_none()
+        && let Some(id) = chunk
             .get("id")
             .and_then(Value::as_str)
             .filter(|id| !id.is_empty())
         {
             output.response_id = Some(id.to_owned());
         }
-    }
 
     if let Some(usage) = chunk.get("usage") {
         output.usage = parse_mistral_usage(model, usage);
@@ -565,13 +561,12 @@ fn process_mistral_tool_call_delta(
         content_index
     };
 
-    if let Some(AssistantContent::ToolCall(block)) = output.content.get_mut(content_index) {
-        if block.name.is_empty()
+    if let Some(AssistantContent::ToolCall(block)) = output.content.get_mut(content_index)
+        && block.name.is_empty()
             && let Some(name) = function.get("name").and_then(Value::as_str)
         {
             block.name = name.to_owned();
         }
-    }
 
     let args_delta = match function.get("arguments") {
         Some(Value::String(arguments)) => arguments.clone(),

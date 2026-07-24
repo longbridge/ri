@@ -82,13 +82,12 @@ pub fn build_openai_completions_payload(
         payload["tool_choice"] = tool_choice;
     }
 
-    if should_set_prompt_cache_key(model, cache_retention) {
-        if let Some(session_id) = options.session_id {
+    if should_set_prompt_cache_key(model, cache_retention)
+        && let Some(session_id) = options.session_id {
             payload["prompt_cache_key"] = Value::String(
                 crate::openai_codex_responses::clamp_openai_prompt_cache_key(&session_id),
             );
         }
-    }
     if cache_retention == CacheRetention::Long && supports_long_cache_retention(model) {
         payload["prompt_cache_retention"] = Value::String("24h".to_owned());
     }
@@ -224,23 +223,20 @@ fn convert_openai_completions_messages_with_cache(
                 let mut tool_calls = Vec::new();
                 let mut reasoning_details = Vec::new();
                 for content in &assistant.content {
-                    match content {
-                        AssistantContent::ToolCall(tool_call) => {
-                            tool_calls.push(json!({
-                                "id": tool_call.id,
-                                "type": "function",
-                                "function": {
-                                    "name": tool_call.name,
-                                    "arguments": serde_json::to_string(&tool_call.arguments).unwrap_or_else(|_| "{}".to_owned()),
-                                },
-                            }));
-                            if let Some(signature) = &tool_call.thought_signature
-                                && let Ok(detail) = serde_json::from_str::<Value>(signature)
-                            {
-                                reasoning_details.push(detail);
-                            }
+                    if let AssistantContent::ToolCall(tool_call) = content {
+                        tool_calls.push(json!({
+                            "id": tool_call.id,
+                            "type": "function",
+                            "function": {
+                                "name": tool_call.name,
+                                "arguments": serde_json::to_string(&tool_call.arguments).unwrap_or_else(|_| "{}".to_owned()),
+                            },
+                        }));
+                        if let Some(signature) = &tool_call.thought_signature
+                            && let Ok(detail) = serde_json::from_str::<Value>(signature)
+                        {
+                            reasoning_details.push(detail);
                         }
-                        _ => {}
                     }
                 }
                 let content = if requires_thinking_as_text(model) && !thinking_blocks.is_empty() {
@@ -263,8 +259,8 @@ fn convert_openai_completions_messages_with_cache(
                     "role": "assistant",
                     "content": content,
                 });
-                if !requires_thinking_as_text(model) && !thinking_blocks.is_empty() {
-                    if let Some(signature) = thinking_blocks
+                if !requires_thinking_as_text(model) && !thinking_blocks.is_empty()
+                    && let Some(signature) = thinking_blocks
                         .first()
                         .and_then(|block| block.thinking_signature.as_deref())
                         .filter(|signature| !signature.is_empty())
@@ -282,7 +278,6 @@ fn convert_openai_completions_messages_with_cache(
                                 .join("\n"),
                         );
                     }
-                }
                 if !tool_calls.is_empty() {
                     message["tool_calls"] = Value::Array(tool_calls);
                 }
@@ -490,24 +485,22 @@ pub fn apply_openai_completions_chunk_metadata(
     model: &Model,
     chunk: &Value,
 ) {
-    if output.response_id.is_none() {
-        if let Some(id) = chunk
+    if output.response_id.is_none()
+        && let Some(id) = chunk
             .get("id")
             .and_then(Value::as_str)
             .filter(|id| !id.is_empty())
         {
             output.response_id = Some(id.to_owned());
         }
-    }
-    if output.response_model.is_none() {
-        if let Some(chunk_model) = chunk
+    if output.response_model.is_none()
+        && let Some(chunk_model) = chunk
             .get("model")
             .and_then(Value::as_str)
             .filter(|chunk_model| !chunk_model.is_empty() && *chunk_model != model.id)
         {
             output.response_model = Some(chunk_model.to_owned());
         }
-    }
     if let Some(usage) = chunk.get("usage") {
         output.usage = parse_openai_completions_chunk_usage(usage, model);
     } else if let Some(choice_usage) = chunk.pointer("/choices/0/usage") {
@@ -757,6 +750,7 @@ fn push_openai_completions_thinking_delta(
     });
 }
 
+    #[allow(clippy::too_many_arguments)]
 fn ensure_openai_completions_tool_call_block(
     output: &mut AssistantMessage,
     sender: &AssistantMessageEventSender,

@@ -42,6 +42,7 @@ pub enum DeviceCodePollProgress<T> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub struct DeviceCodePollConfig {
     pub interval_seconds: Option<u64>,
     pub expires_in_seconds: Option<u64>,
@@ -51,15 +52,6 @@ pub struct DeviceCodePollConfig {
     pub wait_before_first_poll: bool,
 }
 
-impl Default for DeviceCodePollConfig {
-    fn default() -> Self {
-        Self {
-            interval_seconds: None,
-            expires_in_seconds: None,
-            wait_before_first_poll: false,
-        }
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DeviceCodePollState {

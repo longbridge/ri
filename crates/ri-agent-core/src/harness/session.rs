@@ -178,6 +178,7 @@ impl<'de> Deserialize<'de> for BashExecutionMessage {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
+#[allow(clippy::large_enum_variant)]
 pub enum SessionEntryMessage {
     Llm(Message),
     BashExecution(BashExecutionMessage),
@@ -1079,7 +1080,7 @@ impl Session {
                 SessionTreeEntry::SessionInfo { name, .. } => name,
                 _ => None,
             })
-            .last()
+            .next_back()
             .map(|name| name.trim().to_owned())
             .filter(|name| !name.is_empty())
     }
@@ -1280,14 +1281,13 @@ impl Session {
         entry_id: Option<String>,
         summary: Option<BranchMoveSummary>,
     ) -> Result<Option<String>, SessionError> {
-        if let Some(entry_id) = &entry_id {
-            if self.storage.lock().get_entry(entry_id).is_none() {
+        if let Some(entry_id) = &entry_id
+            && self.storage.lock().get_entry(entry_id).is_none() {
                 return Err(SessionError::new(
                     SessionErrorCode::NotFound,
                     format!("Entry {entry_id} not found"),
                 ));
             }
-        }
         self.storage.lock().set_leaf_id(entry_id.clone())?;
         let Some(summary) = summary else {
             return Ok(None);
@@ -1951,14 +1951,13 @@ pub(crate) fn validate_leaf(
     by_id: &BTreeMap<String, SessionTreeEntry>,
     leaf_id: Option<&str>,
 ) -> Result<(), SessionError> {
-    if let Some(leaf_id) = leaf_id {
-        if !by_id.contains_key(leaf_id) {
+    if let Some(leaf_id) = leaf_id
+        && !by_id.contains_key(leaf_id) {
             return Err(SessionError::new(
                 SessionErrorCode::NotFound,
                 format!("Entry {leaf_id} not found"),
             ));
         }
-    }
     Ok(())
 }
 
@@ -1966,14 +1965,13 @@ pub(crate) fn validate_existing_leaf(
     by_id: &BTreeMap<String, SessionTreeEntry>,
     leaf_id: Option<&str>,
 ) -> Result<(), SessionError> {
-    if let Some(leaf_id) = leaf_id {
-        if !by_id.contains_key(leaf_id) {
+    if let Some(leaf_id) = leaf_id
+        && !by_id.contains_key(leaf_id) {
             return Err(SessionError::new(
                 SessionErrorCode::InvalidSession,
                 format!("Entry {leaf_id} not found"),
             ));
         }
-    }
     Ok(())
 }
 
@@ -2065,27 +2063,24 @@ fn parse_header_line(line: &str, file_path: &Path) -> Result<SessionHeader, Sess
     if parsed.get("version").and_then(Value::as_u64) != Some(3) {
         return Err(invalid_session(file_path, "unsupported session version"));
     }
-    if !parsed
+    if parsed
         .get("id")
-        .and_then(Value::as_str)
-        .is_some_and(|id| !id.is_empty())
+        .and_then(Value::as_str).is_none_or(|id| id.is_empty())
     {
         return Err(invalid_session(file_path, "session header is missing id"));
     }
-    if !parsed
+    if parsed
         .get("timestamp")
-        .and_then(Value::as_str)
-        .is_some_and(|timestamp| !timestamp.is_empty())
+        .and_then(Value::as_str).is_none_or(|timestamp| timestamp.is_empty())
     {
         return Err(invalid_session(
             file_path,
             "session header is missing timestamp",
         ));
     }
-    if !parsed
+    if parsed
         .get("cwd")
-        .and_then(Value::as_str)
-        .is_some_and(|cwd| !cwd.is_empty())
+        .and_then(Value::as_str).is_none_or(|cwd| cwd.is_empty())
     {
         return Err(invalid_session(file_path, "session header is missing cwd"));
     }
@@ -2132,10 +2127,9 @@ fn parse_entry_line(
         .get("type")
         .and_then(Value::as_str)
         .ok_or_else(|| invalid_entry(file_path, line_number, "is missing entry type"))?;
-    if !parsed
+    if parsed
         .get("id")
-        .and_then(Value::as_str)
-        .is_some_and(|id| !id.is_empty())
+        .and_then(Value::as_str).is_none_or(|id| id.is_empty())
     {
         return Err(invalid_entry(file_path, line_number, "is missing entry id"));
     }
@@ -2149,10 +2143,9 @@ fn parse_entry_line(
             "has invalid parentId",
         ));
     }
-    if !parsed
+    if parsed
         .get("timestamp")
-        .and_then(Value::as_str)
-        .is_some_and(|timestamp| !timestamp.is_empty())
+        .and_then(Value::as_str).is_none_or(|timestamp| timestamp.is_empty())
     {
         return Err(invalid_entry(
             file_path,

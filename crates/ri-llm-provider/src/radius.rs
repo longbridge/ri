@@ -246,7 +246,7 @@ async fn request_radius_oauth_token(
             "Radius OAuth token request failed",
         ));
     }
-    parse_radius_token_response(&response.body, now_millis() as i64).map_err(|message| {
+    parse_radius_token_response(&response.body, now_millis()).map_err(|message| {
         RadiusOAuthError {
             status: response.status,
             oauth_error: None,
@@ -420,7 +420,7 @@ async fn login_radius_with_device_code(
     // model an abort signal, so there is no flag to pass through yet.
     poll_device_code_flow_with_sleeper_and_abort(
         &poll_config,
-        now_millis() as i64,
+        now_millis(),
         || async {
             match request_radius_oauth_token(
                 config,

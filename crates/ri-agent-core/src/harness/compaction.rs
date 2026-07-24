@@ -483,8 +483,8 @@ pub fn prepare_compaction(
 
     let mut previous_summary = None;
     let mut boundary_start = 0;
-    if let Some(index) = prev_compaction_index {
-        if let SessionTreeEntry::Compaction {
+    if let Some(index) = prev_compaction_index
+        && let SessionTreeEntry::Compaction {
             summary,
             first_kept_entry_id,
             ..
@@ -496,7 +496,6 @@ pub fn prepare_compaction(
                 .position(|entry| entry.id() == first_kept_entry_id)
                 .unwrap_or(index + 1);
         }
-    }
 
     let boundary_end = path_entries.len();
     let context = build_session_context(path_entries).map_err(compaction_session_error)?;
@@ -594,6 +593,7 @@ pub struct SummaryOutput {
     pub usage: Usage,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn generate_summary(
     current_messages: &[SessionMessage],
     model: &Model,
@@ -624,6 +624,7 @@ pub async fn generate_summary(
     .await
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn compact(
     preparation: &CompactionPreparation,
     model: &Model,
@@ -785,14 +786,12 @@ pub fn prepare_branch_entries(
         if let SessionTreeEntry::BranchSummary {
             details, from_hook, ..
         } = entry
-        {
-            if !from_hook.unwrap_or(false)
+            && !from_hook.unwrap_or(false)
                 && let Some(details) = details
             {
                 add_string_array_field(details, "readFiles", &mut file_ops.read);
                 add_string_array_field(details, "modifiedFiles", &mut file_ops.edited);
             }
-        }
     }
 
     for entry in entries.iter().rev() {
@@ -823,6 +822,7 @@ pub fn prepare_branch_entries(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn generate_branch_summary(
     entries: &[SessionTreeEntry],
     model: &Model,
@@ -1159,8 +1159,8 @@ fn find_valid_cut_points(
     end_index: usize,
 ) -> Vec<usize> {
     let mut cut_points = Vec::new();
-    for index in start_index..end_index {
-        match &entries[index] {
+    for (index, entry) in entries.iter().enumerate().take(end_index).skip(start_index) {
+        match entry {
             SessionTreeEntry::Message {
                 message:
                     SessionEntryMessage::Llm(Message::User(_))
@@ -1248,19 +1248,15 @@ fn extract_file_operations(
     prev_compaction_index: Option<usize>,
 ) -> FileOperations {
     let mut file_ops = create_file_ops();
-    if let Some(index) = prev_compaction_index {
-        if let SessionTreeEntry::Compaction {
+    if let Some(index) = prev_compaction_index
+        && let SessionTreeEntry::Compaction {
             details, from_hook, ..
         } = &entries[index]
-        {
-            if !from_hook.unwrap_or(false) {
-                if let Some(details) = details {
+            && !from_hook.unwrap_or(false)
+                && let Some(details) = details {
                     add_string_array_field(details, "readFiles", &mut file_ops.read);
                     add_string_array_field(details, "modifiedFiles", &mut file_ops.edited);
                 }
-            }
-        }
-    }
     for message in messages {
         extract_file_ops_from_message(message, &mut file_ops);
     }
@@ -1306,6 +1302,7 @@ fn parse_timestamp_millis(timestamp: &str) -> i64 {
         .unwrap_or_else(|_| ri_llm_provider::now_millis())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn generate_turn_prefix_summary(
     messages: &[SessionMessage],
     model: &Model,
@@ -1334,6 +1331,7 @@ async fn generate_turn_prefix_summary(
     .await
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn generate_summary_with_prompt(
     current_messages: &[SessionMessage],
     model: &Model,

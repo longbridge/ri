@@ -409,6 +409,7 @@ pub enum RetryEvent {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum AgentHarnessEvent {
     Agent(AgentEvent),
     Retry(RetryEvent),
@@ -2459,6 +2460,7 @@ impl ProviderResponseHook for HarnessProviderResponseHook {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn resolve_provider_stream_options(
     model: &Model,
     thinking_level: ThinkingLevel,

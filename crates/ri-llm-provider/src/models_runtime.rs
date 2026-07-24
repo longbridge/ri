@@ -161,6 +161,7 @@ pub enum ProviderApiDispatch {
     /// stream error.
     ByApi(BTreeMap<Api, Arc<dyn ApiProvider>>),
     /// Late-bound lookup (e.g. through the built-in API registry).
+    #[allow(clippy::type_complexity)]
     Resolver(Arc<dyn Fn(&str) -> Option<Arc<dyn ApiProvider>> + Send + Sync>),
 }
 

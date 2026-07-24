@@ -1011,6 +1011,7 @@ pub fn openai_codex_retry_delay_ms(
     )
 }
 
+    #[allow(clippy::too_many_arguments)]
 pub fn openai_codex_retry_delay_ms_with_limits(
     status: u16,
     error_text: &str,

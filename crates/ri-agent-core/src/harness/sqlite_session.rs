@@ -1053,8 +1053,8 @@ impl SqliteSessionStorage {
     }
 
     /// Returns the number of entries currently held in the decode cache.
-    /// Only available in test builds; use to verify capacity-eviction behavior.
-    #[cfg(test)]
+    /// Intended for use in integration tests to verify capacity-eviction behavior.
+    #[doc(hidden)]
     pub fn cache_len(&self) -> usize {
         self.by_id.lock().expect("sqlite cache lock").len()
     }

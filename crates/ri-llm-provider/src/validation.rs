@@ -72,14 +72,13 @@ fn validate_value(value: &Value, schema: &Value, path: &str, errors: &mut Vec<St
         }
     }
 
-    if let Some(candidates) = schema.get("anyOf").and_then(Value::as_array) {
-        if !candidates
+    if let Some(candidates) = schema.get("anyOf").and_then(Value::as_array)
+        && !candidates
             .iter()
             .any(|candidate| schema_matches(value, candidate))
         {
             errors.push(format!("{path}: did not match any anyOf schema"));
         }
-    }
 
     if let Some(candidates) = schema.get("oneOf").and_then(Value::as_array) {
         let matches = candidates
@@ -93,17 +92,16 @@ fn validate_value(value: &Value, schema: &Value, path: &str, errors: &mut Vec<St
         }
     }
 
-    if let Some(expected) = schema.get("const") {
-        if value != expected {
+    if let Some(expected) = schema.get("const")
+        && value != expected {
             errors.push(format!(
                 "{path}: expected constant {}",
                 render_json_value(expected)
             ));
         }
-    }
 
-    if let Some(candidates) = schema.get("enum").and_then(Value::as_array) {
-        if !candidates.iter().any(|candidate| candidate == value) {
+    if let Some(candidates) = schema.get("enum").and_then(Value::as_array)
+        && !candidates.iter().any(|candidate| candidate == value) {
             errors.push(format!(
                 "{path}: expected one of {}",
                 candidates
@@ -113,10 +111,9 @@ fn validate_value(value: &Value, schema: &Value, path: &str, errors: &mut Vec<St
                     .join(", ")
             ));
         }
-    }
 
-    if let Some(required) = schema.get("required").and_then(Value::as_array) {
-        if let Some(object) = value.as_object() {
+    if let Some(required) = schema.get("required").and_then(Value::as_array)
+        && let Some(object) = value.as_object() {
             for required_key in required.iter().filter_map(Value::as_str) {
                 if !object.contains_key(required_key) {
                     errors.push(format!(
@@ -125,17 +122,15 @@ fn validate_value(value: &Value, schema: &Value, path: &str, errors: &mut Vec<St
                 }
             }
         }
-    }
 
-    if let Some(schema_type) = schema.get("type") {
-        if !matches_schema_type(value, schema_type) {
+    if let Some(schema_type) = schema.get("type")
+        && !matches_schema_type(value, schema_type) {
             errors.push(format!(
                 "{path}: expected {}",
                 render_schema_type(schema_type)
             ));
             return;
         }
-    }
 
     validate_scalar_constraints(value, schema, path, errors);
 
@@ -229,16 +224,14 @@ fn validate_scalar_constraints(
 ) {
     if let Some(text) = value.as_str() {
         let len = text.encode_utf16().count() as u64;
-        if let Some(min_length) = schema.get("minLength").and_then(Value::as_u64) {
-            if len < min_length {
+        if let Some(min_length) = schema.get("minLength").and_then(Value::as_u64)
+            && len < min_length {
                 errors.push(format!("{path}: length must be at least {min_length}"));
             }
-        }
-        if let Some(max_length) = schema.get("maxLength").and_then(Value::as_u64) {
-            if len > max_length {
+        if let Some(max_length) = schema.get("maxLength").and_then(Value::as_u64)
+            && len > max_length {
                 errors.push(format!("{path}: length must be at most {max_length}"));
             }
-        }
         if let Some(pattern) = schema.get("pattern").and_then(Value::as_str) {
             match regex::Regex::new(pattern) {
                 Ok(regex) if !regex.is_match(text) => {
@@ -253,34 +246,29 @@ fn validate_scalar_constraints(
     }
 
     if let Some(number) = value.as_f64() {
-        if let Some(minimum) = schema.get("minimum").and_then(Value::as_f64) {
-            if number < minimum {
+        if let Some(minimum) = schema.get("minimum").and_then(Value::as_f64)
+            && number < minimum {
                 errors.push(format!("{path}: must be >= {minimum}"));
             }
-        }
-        if let Some(maximum) = schema.get("maximum").and_then(Value::as_f64) {
-            if number > maximum {
+        if let Some(maximum) = schema.get("maximum").and_then(Value::as_f64)
+            && number > maximum {
                 errors.push(format!("{path}: must be <= {maximum}"));
             }
-        }
-        if let Some(exclusive_minimum) = schema.get("exclusiveMinimum").and_then(Value::as_f64) {
-            if number <= exclusive_minimum {
+        if let Some(exclusive_minimum) = schema.get("exclusiveMinimum").and_then(Value::as_f64)
+            && number <= exclusive_minimum {
                 errors.push(format!("{path}: must be > {exclusive_minimum}"));
             }
-        }
-        if let Some(exclusive_maximum) = schema.get("exclusiveMaximum").and_then(Value::as_f64) {
-            if number >= exclusive_maximum {
+        if let Some(exclusive_maximum) = schema.get("exclusiveMaximum").and_then(Value::as_f64)
+            && number >= exclusive_maximum {
                 errors.push(format!("{path}: must be < {exclusive_maximum}"));
             }
-        }
-        if let Some(multiple_of) = schema.get("multipleOf").and_then(Value::as_f64) {
-            if multiple_of > 0.0 {
+        if let Some(multiple_of) = schema.get("multipleOf").and_then(Value::as_f64)
+            && multiple_of > 0.0 {
                 let quotient = number / multiple_of;
                 if (quotient - quotient.round()).abs() > f64::EPSILON * 16.0 {
                     errors.push(format!("{path}: must be a multiple of {multiple_of}"));
                 }
             }
-        }
     }
 }
 
@@ -290,20 +278,18 @@ fn validate_object_constraints(
     path: &str,
     errors: &mut Vec<String>,
 ) {
-    if let Some(min_properties) = schema.get("minProperties").and_then(Value::as_u64) {
-        if (object.len() as u64) < min_properties {
+    if let Some(min_properties) = schema.get("minProperties").and_then(Value::as_u64)
+        && (object.len() as u64) < min_properties {
             errors.push(format!(
                 "{path}: must contain at least {min_properties} properties"
             ));
         }
-    }
-    if let Some(max_properties) = schema.get("maxProperties").and_then(Value::as_u64) {
-        if (object.len() as u64) > max_properties {
+    if let Some(max_properties) = schema.get("maxProperties").and_then(Value::as_u64)
+        && (object.len() as u64) > max_properties {
             errors.push(format!(
                 "{path}: must contain at most {max_properties} properties"
             ));
         }
-    }
 
     let defined_keys: BTreeSet<&str> = schema
         .get("properties")
@@ -338,16 +324,14 @@ fn validate_array_items(
     path: &str,
     errors: &mut Vec<String>,
 ) {
-    if let Some(min_items) = schema.get("minItems").and_then(Value::as_u64) {
-        if (array.len() as u64) < min_items {
+    if let Some(min_items) = schema.get("minItems").and_then(Value::as_u64)
+        && (array.len() as u64) < min_items {
             errors.push(format!("{path}: must contain at least {min_items} items"));
         }
-    }
-    if let Some(max_items) = schema.get("maxItems").and_then(Value::as_u64) {
-        if (array.len() as u64) > max_items {
+    if let Some(max_items) = schema.get("maxItems").and_then(Value::as_u64)
+        && (array.len() as u64) > max_items {
             errors.push(format!("{path}: must contain at most {max_items} items"));
         }
-    }
     if schema
         .get("uniqueItems")
         .and_then(Value::as_bool)
@@ -413,29 +397,27 @@ fn coerce_with_schema(value: &mut Value, schema: &Value) {
         return;
     };
 
-    if !matches_schema_type(value, schema_type) {
-        if let Some(types) = schema_types(schema_type) {
+    if !matches_schema_type(value, schema_type)
+        && let Some(types) = schema_types(schema_type) {
             for schema_type in types {
                 if coerce_primitive(value, schema_type) {
                     break;
                 }
             }
         }
-    }
 
     if schema_allows_type(schema_type, "integer") {
         normalize_integer_value(value);
     }
 
-    if schema_allows_type(schema_type, "object") {
-        if let Some(object) = value.as_object_mut() {
+    if schema_allows_type(schema_type, "object")
+        && let Some(object) = value.as_object_mut() {
             coerce_object(object, schema);
         }
-    }
 
-    if schema_allows_type(schema_type, "array") {
-        if let Some(array) = value.as_array_mut() {
-            if let Some(items) = schema.get("items") {
+    if schema_allows_type(schema_type, "array")
+        && let Some(array) = value.as_array_mut()
+            && let Some(items) = schema.get("items") {
                 if let Some(tuple_items) = items.as_array() {
                     for (index, item) in array.iter_mut().enumerate() {
                         if let Some(item_schema) = tuple_items.get(index) {
@@ -453,8 +435,6 @@ fn coerce_with_schema(value: &mut Value, schema: &Value) {
                     }
                 }
             }
-        }
-    }
 }
 
 fn coerce_object(object: &mut Map<String, Value>, schema: &Value) {

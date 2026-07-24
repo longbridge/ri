@@ -389,7 +389,7 @@ pub async fn complete_github_copilot_device_flow_for_urls(
     complete_github_copilot_device_flow_for_urls_with_sleeper(
         urls,
         device,
-        now_millis() as i64,
+        now_millis(),
         |delay_ms| async move {
             tokio::time::sleep(Duration::from_millis(delay_ms)).await;
         },
@@ -454,7 +454,7 @@ where
         urls,
         enterprise_domain,
         on_device_code,
-        now_millis() as i64,
+        now_millis(),
         |delay_ms| async move {
             tokio::time::sleep(Duration::from_millis(delay_ms)).await;
         },
@@ -618,7 +618,7 @@ pub async fn refresh_github_copilot_token(
     refresh_token: &str,
     enterprise_domain: Option<&str>,
 ) -> Result<GitHubCopilotCredentials, String> {
-    refresh_github_copilot_token_at(refresh_token, enterprise_domain, now_millis() as i64).await
+    refresh_github_copilot_token_at(refresh_token, enterprise_domain, now_millis()).await
 }
 
 pub fn build_github_copilot_model_policy_request(

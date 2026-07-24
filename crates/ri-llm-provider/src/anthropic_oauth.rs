@@ -485,7 +485,7 @@ pub async fn exchange_anthropic_authorization_code(
         state,
         verifier,
         redirect_uri,
-        now_millis() as i64,
+        now_millis(),
     )
     .await
 }
@@ -537,7 +537,7 @@ pub async fn refresh_anthropic_token_with_url_at(
 }
 
 pub async fn refresh_anthropic_token(refresh_token: &str) -> Result<OAuthCredentials, String> {
-    refresh_anthropic_token_at(refresh_token, now_millis() as i64).await
+    refresh_anthropic_token_at(refresh_token, now_millis()).await
 }
 
 pub fn parse_anthropic_oauth_token_response(

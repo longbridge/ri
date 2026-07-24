@@ -670,27 +670,29 @@ pub fn build_anthropic_simple_payload_for_client(
     use_claude_code_tool_names: bool,
 ) -> Value {
     let options = apply_simple_stream_defaults(model, context, options);
-    let mut payload_options = AnthropicPayloadOptions::default();
-    payload_options.cache_retention = options.stream.cache_retention;
-    payload_options.max_tokens = options.stream.max_tokens;
-    payload_options.temperature = options.stream.temperature;
-    payload_options.metadata_user_id = options
-        .stream
-        .metadata
-        .get("user_id")
-        .and_then(Value::as_str)
-        .map(str::to_owned);
-    payload_options.tool_choice = options
-        .stream
-        .extra
-        .get("toolChoice")
-        .and_then(format_anthropic_tool_choice_option);
-    payload_options.thinking_display = options
-        .stream
-        .extra
-        .get("thinkingDisplay")
-        .and_then(Value::as_str)
-        .map(str::to_owned);
+    let mut payload_options = AnthropicPayloadOptions {
+        cache_retention: options.stream.cache_retention,
+        max_tokens: options.stream.max_tokens,
+        temperature: options.stream.temperature,
+        metadata_user_id: options
+            .stream
+            .metadata
+            .get("user_id")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        tool_choice: options
+            .stream
+            .extra
+            .get("toolChoice")
+            .and_then(format_anthropic_tool_choice_option),
+        thinking_display: options
+            .stream
+            .extra
+            .get("thinkingDisplay")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+        ..Default::default()
+    };
 
     let explicit_thinking_enabled = options
         .stream

@@ -66,7 +66,7 @@ async fn login_anthropic_interactive(
         &authorization.verifier,
         &authorization.redirect_uri,
         ANTHROPIC_OAUTH_TOKEN_URL,
-        now_millis() as i64,
+        now_millis(),
     )
     .await
     .map(oauth_credentials_to_credential)
@@ -120,7 +120,7 @@ pub async fn login_github_copilot_with_urls(
         &refresh_token,
         urls,
         enterprise_domain,
-        now_millis() as i64,
+        now_millis(),
     )
     .await?;
     interaction.notify(AuthEvent::Progress {
@@ -184,7 +184,7 @@ async fn login_openai_codex_interactive(
         &authorization.verifier,
         Some(&authorization.redirect_uri),
         OPENAI_CODEX_OAUTH_TOKEN_URL,
-        now_millis() as i64,
+        now_millis(),
     )
     .await
     .map(oauth_credentials_to_credential)

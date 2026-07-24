@@ -325,7 +325,7 @@ pub fn google_vertex_base_url_includes_api_version(base_url: &str) -> bool {
         .map(|(_, path)| path)
         .unwrap_or_default();
     path.split('/')
-        .any(|part| is_google_vertex_api_version_segment(part))
+        .any(is_google_vertex_api_version_segment)
 }
 
 fn build_google_vertex_http_options(

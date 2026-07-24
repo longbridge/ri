@@ -167,11 +167,10 @@ fn should_proxy_hostname(hostname: &str, port: u16, scoped_env: &BTreeMap<String
                 return true;
             }
             let (mut proxy_hostname, proxy_port) = split_host_port(entry);
-            if let Some(proxy_port) = proxy_port {
-                if proxy_port != port {
+            if let Some(proxy_port) = proxy_port
+                && proxy_port != port {
                     return true;
                 }
-            }
             if !proxy_hostname.starts_with(['.', '*']) {
                 return hostname != proxy_hostname;
             }

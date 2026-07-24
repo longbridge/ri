@@ -167,8 +167,7 @@ fn load_skills_from_dir(
         .iter()
         .map(|entry| entry.path())
         .find(|path| path.file_name().and_then(|name| name.to_str()) == Some("SKILL.md"))
-    {
-        if fs::metadata(&skill_path)
+        && fs::metadata(&skill_path)
             .map(|metadata| metadata.is_file())
             .unwrap_or(false)
             && !ignore.ignores(&relative_env_path(root_dir, &skill_path))
@@ -180,7 +179,6 @@ fn load_skills_from_dir(
             diagnostics.append(&mut warnings);
             return (skills, diagnostics);
         }
-    }
 
     entries.sort_by_key(|entry| entry.file_name());
     for entry in entries {

@@ -140,7 +140,6 @@ pub fn build_google_simple_payload(
                 .filter(|value| !value.is_empty())
                 .map(str::to_owned),
             thinking,
-            ..Default::default()
         },
     )
 }
@@ -633,15 +632,14 @@ fn process_google_function_call_part(
 }
 
 fn apply_google_chunk_metadata(output: &mut AssistantMessage, model: &Model, chunk: &Value) {
-    if output.response_id.is_none() {
-        if let Some(response_id) = chunk
+    if output.response_id.is_none()
+        && let Some(response_id) = chunk
             .get("responseId")
             .and_then(Value::as_str)
             .filter(|response_id| !response_id.is_empty())
         {
             output.response_id = Some(response_id.to_owned());
         }
-    }
 
     let Some(usage) = chunk.get("usageMetadata") else {
         return;
@@ -970,7 +968,7 @@ fn resolve_google_thought_signature(
 }
 
 fn is_valid_google_thought_signature(signature: &str) -> bool {
-    if signature.is_empty() || signature.len() % 4 != 0 {
+    if signature.is_empty() || !signature.len().is_multiple_of(4) {
         return false;
     }
 

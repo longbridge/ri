@@ -443,7 +443,7 @@ pub enum AgentEvent {
     },
     MessageUpdate {
         message: AgentMessage,
-        assistant_message_event: AssistantMessageEvent,
+        assistant_message_event: Box<AssistantMessageEvent>,
     },
     MessageEnd {
         message: AgentMessage,

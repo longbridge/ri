@@ -170,7 +170,7 @@ impl ImagesApiProvider for OpenRouterImagesHttpProvider {
                     attempt,
                     max_retries as u32,
                     options.max_retry_delay_ms,
-                    now_millis() as i64,
+                    now_millis(),
                 ) {
                     if !sleep_openrouter_images_retry(delay_ms, &options).await {
                         return Ok(openrouter_images_error(model, "Request was aborted", true));
@@ -412,6 +412,7 @@ fn provider_error_from_body(status: u16, body: &str) -> String {
         .unwrap_or_else(|| format!("Provider returned HTTP {status}: {body}"))
 }
 
+    #[allow(clippy::too_many_arguments)]
 pub fn openrouter_images_retry_delay_ms(
     status: u16,
     error_text: &str,

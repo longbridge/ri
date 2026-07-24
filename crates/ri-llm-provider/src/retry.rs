@@ -103,6 +103,7 @@ pub struct RetryPolicy {
 
 /// Optional callbacks emitted by [`retry_assistant_call`] around each retry.
 #[derive(Clone, Default)]
+#[allow(clippy::type_complexity)]
 pub struct RetryCallbacks {
     /// Emitted before the backoff sleep of each retry attempt (1-indexed).
     pub on_retry_scheduled: Option<Arc<dyn Fn(u32, u32, u64, &str) + Send + Sync>>,
