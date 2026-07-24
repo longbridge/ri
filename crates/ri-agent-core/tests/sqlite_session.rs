@@ -768,3 +768,115 @@ fn sqlite_append_failure_restores_in_memory_state() {
     assert_eq!(storage.entries().len(), 2);
     cleanup(&path);
 }
+
+// ============================================================================
+// Cache eviction tests (FR-03)
+// ============================================================================
+
+/// Helper: create a chain of `count` message entries starting from root.
+/// Entry ids are sequential strings like "e001", "e002", ...
+fn append_chain(storage: &mut ri_agent_core::harness::SqliteSessionStorage, count: usize) {
+    let mut parent: Option<String> = None;
+    for i in 1..=count {
+        let id = format!("e{i:03}");
+        storage
+            .append_entry(message_entry(&id, parent.as_deref(), &id))
+            .unwrap_or_else(|err| panic!("append {id} failed: {err}"));
+        parent = Some(id);
+    }
+}
+
+#[test]
+fn sqlite_cache_eviction_respects_capacity_limit() {
+    // Use a fresh session so the test-only SQLITE_BY_ID_CACHE_CAPACITY (256)
+    // is the limit. We append 257 entries and verify the in-memory cache never
+    // exceeds that bound after the final append.
+    let path = temp_database_path("evict-capacity");
+    let repo = SqliteSessionRepo::new(&path);
+    let mut storage = repo
+        .create(SqliteSessionCreateOptions {
+            cwd: "/tmp/project".to_owned(),
+            ..Default::default()
+        })
+        .expect("create");
+
+    append_chain(&mut storage, 257);
+
+    // The in-memory cache must be capped at the capacity limit.
+    assert!(
+        storage.cache_len() <= 256,
+        "cache_len {} exceeds capacity 256",
+        storage.cache_len()
+    );
+
+    // All entries must still be accessible via get_entry (DB fallback).
+    let entry = storage
+        .get_entry("e001")
+        .expect("e001 must be accessible after eviction");
+    assert_eq!(entry.id(), "e001");
+
+    cleanup(&path);
+}
+
+#[test]
+fn sqlite_evicted_entry_reloads_from_db() {
+    // Append enough entries to force eviction of early ones, then verify that
+    // a point-lookup on an evicted entry succeeds (DB fallback path).
+    let path = temp_database_path("evict-reload");
+    let repo = SqliteSessionRepo::new(&path);
+    let mut storage = repo
+        .create(SqliteSessionCreateOptions {
+            cwd: "/tmp/project".to_owned(),
+            ..Default::default()
+        })
+        .expect("create");
+
+    // Append 260 entries (> 256 capacity) in a chain.
+    append_chain(&mut storage, 260);
+
+    // e001 was inserted first and is very likely evicted by now.
+    // It must still be loadable via the DB fallback.
+    let reloaded = storage
+        .get_entry("e001")
+        .expect("evicted entry must reload from DB");
+    assert_eq!(reloaded.id(), "e001");
+
+    cleanup(&path);
+}
+
+#[test]
+fn sqlite_path_to_root_survives_cache_eviction() {
+    // Ensure that path_to_root still returns the correct chain even after
+    // the cache has been capped and early entries have been evicted.
+    let path = temp_database_path("evict-path");
+    let repo = SqliteSessionRepo::new(&path);
+    let mut storage = repo
+        .create(SqliteSessionCreateOptions {
+            cwd: "/tmp/project".to_owned(),
+            ..Default::default()
+        })
+        .expect("create");
+
+    // Build a 260-entry linear chain.
+    append_chain(&mut storage, 260);
+
+    // path_to_root from the leaf should reach the root via DB fallback for
+    // evicted entries. Just verify it terminates without error and includes
+    // the leaf.
+    let leaf_id = format!("e{:03}", 260);
+    let path_entries = storage
+        .path_to_root(Some(&leaf_id))
+        .expect("path_to_root must succeed after cache eviction");
+
+    // The path should contain 260 entries (root … leaf) in order.
+    assert_eq!(
+        path_entries.len(),
+        260,
+        "path length mismatch: got {}",
+        path_entries.len()
+    );
+    assert_eq!(path_entries.first().map(|e| e.id()), Some("e001"));
+    assert_eq!(path_entries.last().map(|e| e.id()), Some(leaf_id.as_str()));
+
+    cleanup(&path);
+}

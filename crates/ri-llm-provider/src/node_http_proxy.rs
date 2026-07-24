@@ -80,6 +80,13 @@ pub fn resolve_http_proxy_url_for_websocket_target(
 // already silently closed.
 const POOL_IDLE_TIMEOUT: Duration = Duration::from_secs(50);
 
+// Cap idle connections per host to 1 to bound per-proxy TCP buffer memory.
+// Worker agents typically talk to one LLM host at a time; a single idle
+// connection covers the common case while preventing unbounded pool growth
+// under high parallelism. Concurrent requests still open new connections; only
+// the number of *idle* connections is capped.
+const POOL_MAX_IDLE_PER_HOST: usize = 1;
+
 // One client per resolved proxy configuration. The proxy URL is the only
 // per-target variable in client construction, so caching on it preserves the
 // exact configuration each target would have received, while letting every
@@ -103,7 +110,8 @@ fn cached_or_build_client(proxy_url: Option<ProxyUrl>) -> Result<(reqwest::Clien
     }
     let mut builder = reqwest::Client::builder()
         .no_proxy()
-        .pool_idle_timeout(POOL_IDLE_TIMEOUT);
+        .pool_idle_timeout(POOL_IDLE_TIMEOUT)
+        .pool_max_idle_per_host(POOL_MAX_IDLE_PER_HOST);
     if let Some(proxy_url) = &proxy_url {
         let proxy = reqwest::Proxy::all(proxy_url.as_str())
             .map_err(|error| format!("Invalid proxy URL {:?}: {error}", proxy_url.as_str()))?;

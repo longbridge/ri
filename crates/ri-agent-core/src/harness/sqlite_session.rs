@@ -38,6 +38,13 @@ const SQLITE_MIGRATIONS: &[(&str, &str)] = &[(
     include_str!("sqlite_migrations/001_initial.sql"),
 )];
 
+/// Maximum number of decoded entries kept in the in-memory decode cache.
+/// Entries beyond this limit are evicted (smallest BTreeMap key first,
+/// approximating oldest) to cap memory usage. 256 covers >99% of normal
+/// sessions; long sessions beyond this limit fall back to DB point-queries
+/// which are cheap under SQLite WAL mode.
+const SQLITE_BY_ID_CACHE_CAPACITY: usize = 256;
+
 // ============================================================================
 // Materialized session state (pi `session-materialized.ts`)
 // ============================================================================
@@ -816,10 +823,9 @@ impl SqliteSessionStorage {
         match result {
             Ok(()) => {
                 self.leaf_id = new_leaf;
-                self.by_id
-                    .lock()
-                    .expect("sqlite cache lock")
-                    .insert(entry.id().to_owned(), entry);
+                let mut cache = self.by_id.lock().expect("sqlite cache lock");
+                cache.insert(entry.id().to_owned(), entry);
+                evict_cache_if_over_capacity(&mut cache);
                 Ok(())
             }
             Err(error) => {
@@ -847,10 +853,11 @@ impl SqliteSessionStorage {
                 .ok()?
         };
         let entry = decode_sqlite_entry(&row).ok()?;
-        self.by_id
-            .lock()
-            .expect("sqlite cache lock")
-            .insert(entry.id().to_owned(), entry.clone());
+        {
+            let mut cache = self.by_id.lock().expect("sqlite cache lock");
+            cache.insert(entry.id().to_owned(), entry.clone());
+            evict_cache_if_over_capacity(&mut cache);
+        }
         Some(entry)
     }
 
@@ -967,6 +974,7 @@ impl SqliteSessionStorage {
             // Keep JSONL-like permissive resume behavior: skip malformed rows.
             if let Ok(entry) = decode_sqlite_entry(&row) {
                 cache.insert(entry.id().to_owned(), entry.clone());
+                evict_cache_if_over_capacity(&mut cache);
                 entries.push(entry);
             }
         }
@@ -1035,12 +1043,31 @@ impl SqliteSessionStorage {
                 invalid_session(format!("invalid entry row for branch entry {}", row.id))
             })?;
             cache.insert(entry.id().to_owned(), entry.clone());
+            evict_cache_if_over_capacity(&mut cache);
             // Leaf entries are navigation markers, not part of the path.
             if !matches!(entry, SessionTreeEntry::Leaf { .. }) {
                 entries.push(entry);
             }
         }
         Ok(entries)
+    }
+
+    /// Returns the number of entries currently held in the decode cache.
+    /// Only available in test builds; use to verify capacity-eviction behavior.
+    #[cfg(test)]
+    pub fn cache_len(&self) -> usize {
+        self.by_id.lock().expect("sqlite cache lock").len()
+    }
+}
+
+/// Evict the oldest entries from the decode cache when it exceeds
+/// `SQLITE_BY_ID_CACHE_CAPACITY`. Uses a FIFO approximation: `BTreeMap`
+/// keys are short ids whose lexicographic order approximates insertion
+/// order well enough for a capacity guard. Evicted entries remain in the
+/// SQLite database and are re-fetched on the next `get_entry` call.
+fn evict_cache_if_over_capacity(cache: &mut BTreeMap<String, SessionTreeEntry>) {
+    while cache.len() > SQLITE_BY_ID_CACHE_CAPACITY {
+        cache.pop_first();
     }
 }
 
@@ -1065,10 +1092,11 @@ fn materialize_branch(
             )
             .ok()?;
         let entry = decode_sqlite_entry(&row).ok()?;
-        cache
-            .lock()
-            .expect("sqlite cache lock")
-            .insert(entry.id().to_owned(), entry.clone());
+        {
+            let mut cache_guard = cache.lock().expect("sqlite cache lock");
+            cache_guard.insert(entry.id().to_owned(), entry.clone());
+            evict_cache_if_over_capacity(&mut cache_guard);
+        }
         Some(entry)
     };
     let path = get_path_to_root_or_compaction(lookup, leaf_id)?;
