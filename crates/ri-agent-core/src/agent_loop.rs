@@ -32,6 +32,10 @@ pub struct AgentLoopConfig {
     pub skip_initial_queued_message_poll: bool,
     pub tool_execution: ToolExecutionMode,
     pub max_turns: usize,
+    /// Wall-clock budget for tool turns. Once it is spent, a turn that still
+    /// asks for tools is followed by the same toolless closing turn as a
+    /// spent `max_turns`. `None` = unlimited.
+    pub time_budget: Option<std::time::Duration>,
 }
 
 impl AgentLoopConfig {
@@ -53,6 +57,7 @@ impl AgentLoopConfig {
             skip_initial_queued_message_poll: false,
             tool_execution: ToolExecutionMode::Parallel,
             max_turns: 16,
+            time_budget: None,
         }
     }
 }
@@ -345,6 +350,7 @@ async fn run_until_done(
     let mut hook_new_messages = initial_new_messages.to_vec();
     let mut active_config = config.clone();
     let max_turns = config.max_turns.max(1);
+    let started = std::time::Instant::now();
     let mut pending_messages = if active_config.skip_initial_queued_message_poll {
         Vec::new()
     } else {
@@ -376,6 +382,9 @@ async fn run_until_done(
         }
         pending_messages = get_queued_messages(&active_config).await?;
         let has_queued_messages = !pending_messages.is_empty();
+        if should_continue && time_budget_spent(&active_config, started) {
+            break;
+        }
         if should_continue || has_queued_messages {
             continue;
         }
@@ -384,7 +393,8 @@ async fn run_until_done(
             return Ok(all_messages);
         }
     }
-    // The budget ran out while the model still wanted tools. Erroring here
+    // The budget (turns or wall-clock) ran out while the model still wanted
+    // tools. Erroring here
     // throws every turn of work away, and the run's whole point — a review
     // verdict, a summary — is usually one text turn from done. Withdraw the
     // tools, tell the model why, and let it answer with what it has.
@@ -403,7 +413,17 @@ async fn run_until_done(
 }
 
 /// User message injected before the closing turn of a spent tool budget
-/// (`AgentLoopConfig::max_turns`). That turn is offered no tools.
+/// (`AgentLoopConfig::max_turns` or `AgentLoopConfig::time_budget`). That
+/// turn is offered no tools.
+fn time_budget_spent(config: &AgentLoopConfig, started: std::time::Instant) -> bool {
+    config
+        .time_budget
+        .is_some_and(|budget| started.elapsed() >= budget)
+}
+
+/// User message injected before the closing turn of a spent tool budget
+/// (`AgentLoopConfig::max_turns` or `AgentLoopConfig::time_budget`). That
+/// turn is offered no tools.
 pub const TURN_BUDGET_SPENT_NOTICE: &str = "Your tool budget for this task is spent: \
 tools are no longer available. Give your final answer now, in the format the task asked for, \
 from what you have already learned. Do not describe further steps you would take.";

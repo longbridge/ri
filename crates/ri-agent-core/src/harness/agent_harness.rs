@@ -1947,6 +1947,7 @@ impl AgentHarness {
             skip_initial_queued_message_poll: false,
             tool_execution: *self.tool_execution.lock(),
             max_turns: *self.max_turns.lock(),
+            time_budget: None,
         };
         let context = AgentContext {
             system_prompt: before_result
