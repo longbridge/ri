@@ -9,7 +9,7 @@ use crate::types::{
 use futures::{StreamExt, stream::FuturesUnordered};
 use ri_llm_provider::{
     AssistantContent, AssistantMessage, Model, SimpleStreamOptions, StopReason, ToolCall,
-    ToolResultContent, ToolResultMessage, Usage, now_millis, stream_simple,
+    ToolResultContent, ToolResultMessage, Usage, UserMessage, now_millis, stream_simple,
     validate_tool_arguments_value,
 };
 use std::sync::Arc;
@@ -384,10 +384,29 @@ async fn run_until_done(
             return Ok(all_messages);
         }
     }
-    Err(format!(
-        "Agent loop exceeded maximum tool continuation turns: {max_turns}"
-    ))
+    // The budget ran out while the model still wanted tools. Erroring here
+    // throws every turn of work away, and the run's whole point — a review
+    // verdict, a summary — is usually one text turn from done. Withdraw the
+    // tools, tell the model why, and let it answer with what it has.
+    record_event(events, &active_config, AgentEvent::TurnStart).await;
+    let notice = vec![AgentMessage::User(UserMessage::text(
+        TURN_BUDGET_SPENT_NOTICE,
+    ))];
+    record_injected_messages(context, &active_config, events, &notice).await;
+    all_messages.extend(notice);
+    let tools = std::mem::take(&mut context.tools);
+    let outcome = run_one_turn(context, &active_config, events).await;
+    context.tools = tools;
+    let outcome = outcome?;
+    all_messages.extend(outcome.messages);
+    Ok(all_messages)
 }
+
+/// User message injected before the closing turn of a spent tool budget
+/// (`AgentLoopConfig::max_turns`). That turn is offered no tools.
+pub const TURN_BUDGET_SPENT_NOTICE: &str = "Your tool budget for this task is spent: \
+tools are no longer available. Give your final answer now, in the format the task asked for, \
+from what you have already learned. Do not describe further steps you would take.";
 
 async fn prepare_next_turn(
     context: &mut AgentContext,
