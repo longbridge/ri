@@ -5124,6 +5124,79 @@ async fn agent_loop_ignores_late_tool_progress_updates() {
     registration.unregister();
 }
 
+/// A spent wall-clock budget ends the run the same way a spent turn budget
+/// does: the turn that still asks for tools is the last one, then the
+/// toolless closing turn — however many turns `max_turns` still allowed.
+#[tokio::test]
+async fn agent_loop_spent_time_budget_runs_a_toolless_closing_turn() {
+    let registration = register_faux_provider(RegisterFauxProviderOptions::default());
+    let closing_contexts: Arc<Mutex<Vec<Context>>> = Arc::new(Mutex::new(Vec::new()));
+    let tool_turn = || -> FauxResponseStep {
+        faux_assistant_message(
+            faux_tool_call(
+                "echo",
+                json!({ "value": "again" })
+                    .as_object()
+                    .cloned()
+                    .unwrap_or_else(Map::new),
+                None,
+            ),
+            FauxAssistantOptions {
+                stop_reason: Some(StopReason::ToolUse),
+                ..Default::default()
+            },
+        )
+        .into()
+    };
+    let seen = closing_contexts.clone();
+    registration.set_responses(vec![
+        tool_turn(),
+        faux_response_factory(move |context, _options, _state, _model| {
+            seen.lock().expect("mutex").push(context.clone());
+            faux_assistant_message("{\"approved\": false}", Default::default())
+        }),
+        tool_turn(),
+        tool_turn(),
+    ]);
+
+    let executed = Arc::new(Mutex::new(Vec::new()));
+    let mut context = context_with_model(&registration.get_model());
+    context.tools.push(AgentTool {
+        definition: Tool {
+            name: "echo".to_owned(),
+            description: "Echo tool".to_owned(),
+            parameters: json!({ "type": "object", "properties": { "value": { "type": "string" } } }),
+        },
+        label: "Echo".to_owned(),
+        execution_mode: None,
+        argument_preparer: None,
+        executor: Arc::new(EchoExecutor {
+            executed: executed.clone(),
+        }),
+    });
+    let mut config = AgentLoopConfig::new(registration.get_model());
+    config.max_turns = 10;
+    config.time_budget = Some(std::time::Duration::ZERO);
+
+    let (messages, _events) = agent_loop_prompt(context, "review", config)
+        .await
+        .expect("a spent time budget ends in a closing answer, not an error");
+
+    assert_eq!(
+        executed.lock().expect("mutex").len(),
+        1,
+        "only the turn that spent the budget ran a tool"
+    );
+    assert_eq!(
+        text_of(messages.last().expect("closing answer")),
+        Some("{\"approved\": false}")
+    );
+    let closing = closing_contexts.lock().expect("mutex");
+    assert_eq!(closing.len(), 1, "exactly one closing request");
+    assert!(closing[0].tools.is_empty(), "closing turn offers no tools");
+    registration.unregister();
+}
+
 /// A spent turn budget must not throw the run away: the loop gives the model
 /// one closing turn with the tools withdrawn and a notice injected, so a
 /// reviewer that already "has enough context" can still deliver its answer.

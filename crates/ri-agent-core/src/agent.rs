@@ -183,6 +183,8 @@ pub struct AgentOptions {
     pub follow_up_message_provider: Option<Arc<dyn AgentQueuedMessageProvider>>,
     pub tool_execution: ToolExecutionMode,
     pub max_turns: usize,
+    /// See `AgentLoopConfig::time_budget`.
+    pub time_budget: Option<std::time::Duration>,
     pub steering_mode: QueueMode,
     pub follow_up_mode: QueueMode,
 }
@@ -208,6 +210,7 @@ impl AgentOptions {
             follow_up_message_provider: None,
             tool_execution: ToolExecutionMode::Parallel,
             max_turns: 16,
+            time_budget: None,
             steering_mode: QueueMode::OneAtATime,
             follow_up_mode: QueueMode::OneAtATime,
         }
@@ -231,6 +234,7 @@ pub struct Agent {
     follow_up_queue: Arc<PendingMessageQueue>,
     tool_execution: ToolExecutionMode,
     max_turns: usize,
+    time_budget: Option<std::time::Duration>,
     steering_mode: QueueMode,
     follow_up_mode: QueueMode,
     listeners: Arc<Mutex<BTreeMap<u64, Listener>>>,
@@ -266,6 +270,7 @@ impl Agent {
             follow_up_queue,
             tool_execution: options.tool_execution,
             max_turns: options.max_turns,
+            time_budget: options.time_budget,
             steering_mode: options.steering_mode,
             follow_up_mode: options.follow_up_mode,
             listeners: Arc::new(Mutex::new(BTreeMap::new())),
@@ -575,6 +580,7 @@ impl Agent {
             skip_initial_queued_message_poll,
             tool_execution: self.tool_execution,
             max_turns: self.max_turns,
+            time_budget: self.time_budget,
         };
 
         let outcome = f(context, config).await;
